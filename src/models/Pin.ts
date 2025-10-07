@@ -2,11 +2,17 @@ import { db } from "../firebase";
 import { collection, doc, onSnapshot, query, orderBy, deleteDoc, setDoc } from "firebase/firestore";
 import { PIN_MAX_DURATION } from "../config";
 
+export enum PinType {
+  Enemy = "enemy",
+  Ally = "ally",
+  General = "general"
+}
+
 export interface PinData {
   id: string;
   xRatio: number;
   yRatio: number;
-  tag: string;
+  tag: PinType;
   createdAt: number;
 }
 
@@ -64,5 +70,16 @@ export class PinManager {
     } catch (err) {
       console.error("Failed to add pin:", err);
     }
+  }
+
+  async addPin(xRatio: number, yRatio: number, type: PinType) {
+    const pin: PinData = {
+        id: Date.now().toString(),
+        xRatio,
+        yRatio,
+        tag: type,
+        createdAt: Date.now()
+    };
+    await setDoc(doc(db, "pins", pin.id), pin);
   }
 }
