@@ -65,14 +65,22 @@ const Map: React.FC = () => {
 
   return (
     <div
-      style={{ position: "relative", width: "800px", aspectRatio: "4/3" }}
+      style={{ position: "relative", width: "100%"}}
       onPointerDown={handlePointerDown}
       onPointerUp={handlePointerUp}
     >
       <img
         src="/maps/blkfox.png"
         alt="Map"
-        style={{ width: "100%", height: "100%", objectFit: "contain", display: "block" }}
+        style={{ 
+          width: "100%", 
+          height: "100%", 
+          objectFit: "contain", 
+          display: "block", 
+          pointerEvents: "none",
+          userSelect: "none",
+          WebkitUserSelect: "none"
+        }}
       />
       <PinLayer pins={pins} />
     </div>
