@@ -1,6 +1,5 @@
-// src/models/Pin.ts
 import { db } from "../firebase";
-import { collection, addDoc, onSnapshot, query, orderBy } from "firebase/firestore";
+import { collection, doc, onSnapshot, query, orderBy, deleteDoc, setDoc } from "firebase/firestore";
 
 export interface PinData {
   id: string;
@@ -13,28 +12,56 @@ export interface PinData {
 export class PinManager {
   private pins: PinData[] = [];
   private unsubscribe: (() => void) | null = null;
+  private cleanupInterval: NodeJS.Timeout | null = null;
 
-  constructor(initialPins: PinData[] = []) {
-    this.pins = initialPins;
-  }
+  constructor() {}
 
   getAll(): PinData[] {
     return this.pins;
   }
 
+  private async removeExpiredPins() {
+    const now = Date.now();
+    for (const pin of this.pins) {
+      if (now - pin.createdAt >= 20_000) {
+        try {
+          await deleteDoc(doc(db, "pins", pin.id));
+        } catch (err) {
+          console.error("Failed to delete pin:", err);
+        }
+      }
+    }
+  }
+
   subscribe(callback: (pins: PinData[]) => void) {
     const q = query(collection(db, "pins"), orderBy("createdAt"));
-    this.unsubscribe = onSnapshot(q, (snapshot) => {
-      this.pins = snapshot.docs.map((doc) => doc.data() as PinData);
-      callback(this.pins);
+    this.unsubscribe = onSnapshot(q, async (snapshot) => {
+      this.pins = snapshot.docs.map(doc => doc.data() as PinData);
+
+      // 取得時に古いピンを削除
+      await this.removeExpiredPins();
+
+      // コールバックは常に最新の pins
+      callback(this.pins.filter(pin => Date.now() - pin.createdAt < 20_000));
     });
+
+    // 毎秒チェックして削除
+    this.cleanupInterval = setInterval(async () => {
+      await this.removeExpiredPins();
+      callback(this.pins.filter(pin => Date.now() - pin.createdAt < 20_000));
+    }, 1000);
   }
 
   unsubscribeAll() {
     if (this.unsubscribe) this.unsubscribe();
+    if (this.cleanupInterval) clearInterval(this.cleanupInterval);
   }
 
   async add(pin: PinData) {
-    await addDoc(collection(db, "pins"), pin);
+    try {
+      await setDoc(doc(db, "pins", pin.id), pin);
+    } catch (err) {
+      console.error("Failed to add pin:", err);
+    }
   }
 }
