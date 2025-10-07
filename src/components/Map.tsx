@@ -31,6 +31,28 @@ const Map: React.FC = () => {
     return () => pinManager.unsubscribeAll();
   }, []);
 
+  useEffect(() => {
+    let lastTouch = 0;
+
+    const preventDoubleTapZoom = (e: TouchEvent) => {
+      // 2本指のピンチは無視
+      if (e.touches.length > 1) return;
+
+      const now = Date.now();
+      if (now - lastTouch < 400) {
+        e.preventDefault(); // ダブルタップズームだけ防ぐ
+      }
+      lastTouch = now;
+    };
+
+    // touchstart にイベント登録、passive: false 必須
+    document.addEventListener("touchstart", preventDoubleTapZoom, { passive: false });
+
+    return () => {
+      document.removeEventListener("touchstart", preventDoubleTapZoom);
+    };
+  }, []);
+
   const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     if (isJudging.current) {
       doubleTapped.current = true;
@@ -96,7 +118,7 @@ const Map: React.FC = () => {
 
   return (
     <div
-      style={{ position: "relative", width: "100%"}}
+      style={{ position: "relative", width: "100%", touchAction: "manipulation"}}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
