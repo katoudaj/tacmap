@@ -1,79 +1,43 @@
-// src/components/Map.tsx
-import React, { useEffect, useState } from "react";
-import { db } from "../firebase";
-import { collection, addDoc, onSnapshot, serverTimestamp } from "firebase/firestore";
+import React, { useState, useEffect } from "react";
+import PinLayer from "./PinLayer";
+import { PinManager, PinData } from "../models/Pin";
 
-type Pin = {
-  id: string;
-  xRatio: number;
-  yRatio: number;
-  tag: string;
-  createdAt: any;
-};
+const pinManager = new PinManager();
 
 const Map: React.FC = () => {
-  const [pins, setPins] = useState<Pin[]>([]);
-
-  const mapPath = "/maps/blkfox.png";
+  const [pins, setPins] = useState<PinData[]>([]);
 
   useEffect(() => {
-    const unsubscribe = onSnapshot(collection(db, "pins"), (snapshot) => {
-      const newPins: Pin[] = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...(doc.data() as Omit<Pin, "id">)
-      }));
-      setPins(newPins);
-    });
-
-    return () => unsubscribe();
+    pinManager.subscribe(setPins);
+    return () => pinManager.unsubscribeAll();
   }, []);
 
   const handleClick = async (e: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
     const rect = e.currentTarget.getBoundingClientRect();
     const xRatio = (e.clientX - rect.left) / rect.width;
     const yRatio = (e.clientY - rect.top) / rect.height;
-    const tag = prompt("タグを入力してください", "ENEMY") || "ENEMY";
+    const tag = prompt("タグを入力") || "Unknown";
 
-    await addDoc(collection(db, "pins"), {
+    await pinManager.add({
+      id: Date.now().toString(),
       xRatio,
       yRatio,
       tag,
-      createdAt: serverTimestamp()
+      createdAt: Date.now()
     });
   };
 
   return (
     <div
-      style={{ position: "relative", width: "800px", height: "600px" }}
+      style={{ position: "relative", width: "800px", aspectRatio: "4/3" }}
       onClick={handleClick}
     >
       <img
-        src={mapPath}
+        src="/maps/blkfox.png"
         alt="Map"
-        style={{
-          width: "100%", // 親の幅に合わせる
-          height: "auto", // 高さを自動調整
-          display: "block"
-        }}
+        style={{ width: "100%", height: "100%", objectFit: "contain", display: "block" }}
       />
-      {pins.map((pin) => (
-        <div
-          key={pin.id}
-          style={{
-            position: "absolute",
-            left: `${pin.xRatio * 100}%`,
-            top: `${pin.yRatio * 100}%`,
-            transform: "translate(-50%, -50%)",
-            backgroundColor: "red",
-            color: "white",
-            padding: "2px 4px",
-            borderRadius: "4px",
-            fontSize: "12px"
-          }}
-        >
-          {pin.tag}
-        </div>
-      ))}
+      <PinLayer pins={pins} />
     </div>
   );
 };
