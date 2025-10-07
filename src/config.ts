@@ -1,0 +1,1 @@
+export const PIN_MAX_DURATION = 30; // ピンが消えるまでの秒数

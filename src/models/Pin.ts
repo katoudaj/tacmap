@@ -1,5 +1,6 @@
 import { db } from "../firebase";
 import { collection, doc, onSnapshot, query, orderBy, deleteDoc, setDoc } from "firebase/firestore";
+import { PIN_MAX_DURATION } from "../config";
 
 export interface PinData {
   id: string;
@@ -23,7 +24,7 @@ export class PinManager {
   private async removeExpiredPins() {
     const now = Date.now();
     for (const pin of this.pins) {
-      if (now - pin.createdAt >= 20_000) {
+      if (now - pin.createdAt >= PIN_MAX_DURATION * 1000) {
         try {
           await deleteDoc(doc(db, "pins", pin.id));
         } catch (err) {
@@ -42,13 +43,13 @@ export class PinManager {
       await this.removeExpiredPins();
 
       // コールバックは常に最新の pins
-      callback(this.pins.filter(pin => Date.now() - pin.createdAt < 20_000));
+      callback(this.pins.filter(pin => Date.now() - pin.createdAt < PIN_MAX_DURATION * 1000));
     });
 
     // 毎秒チェックして削除
     this.cleanupInterval = setInterval(async () => {
       await this.removeExpiredPins();
-      callback(this.pins.filter(pin => Date.now() - pin.createdAt < 20_000));
+      callback(this.pins.filter(pin => Date.now() - pin.createdAt < PIN_MAX_DURATION * 1000));
     }, 1000);
   }
 
