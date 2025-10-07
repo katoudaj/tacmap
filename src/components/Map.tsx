@@ -9,8 +9,8 @@ const MOVE_THRESHOLD = 5; // px
 
 const Map: React.FC = () => {
   const [pins, setPins] = useState<PinData[]>([]);
+  const [rotation, setRotation] = useState<number>(0); // 回転角度 (deg)
   const clickTimeout = useRef<NodeJS.Timeout | null>(null);
-  const lastTap = useRef<number>(0);
 
   const tapJudgeTimeout = useRef<NodeJS.Timeout | null>(null);
   const isJudging = useRef(false);
@@ -53,6 +53,16 @@ const Map: React.FC = () => {
     };
   }, []);
 
+  const rotateBy = (deg: number) => {
+    setRotation((r) => {
+      const next = (r + deg) % 360;
+      return next < 0 ? next + 360 : next;
+    });
+  };
+  const rotateLeft = () => rotateBy(-90);
+  const rotateRight = () => rotateBy(90);
+  const resetRotation = () => setRotation(0);
+
   const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     if (isJudging.current) {
       doubleTapped.current = true;
@@ -62,9 +72,32 @@ const Map: React.FC = () => {
 
     maybeLongPress.current = true;
 
+    // スタート座標セット（ドラッグ判定用）
+    startX.current = e.clientX;
+    startY.current = e.clientY;
+    moved.current = false;
+
     const rect = e.currentTarget.getBoundingClientRect();
-    const xRatio = (e.clientX - rect.left) / rect.width;
-    const yRatio = (e.clientY - rect.top) / rect.height;
+
+    // 回転を考慮して、クリック点を逆回転してから比率計算する
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
+    const localX = e.clientX - cx;
+    const localY = e.clientY - cy;
+
+    const rad = (rotation * Math.PI) / 180;
+    const cos = Math.cos(rad);
+    const sin = Math.sin(rad);
+
+    // 逆回転（-rotation）を適用した座標
+    const rx = localX * cos + localY * sin;
+    const ry = -localX * sin + localY * cos;
+
+    // 正規化は回転前の要素サイズ（layout サイズ）を使う
+    const w = (e.currentTarget as HTMLElement).clientWidth;
+    const h = (e.currentTarget as HTMLElement).clientHeight;
+    const xRatio = 0.5 + rx / w;
+    const yRatio = 0.5 + ry / h;
 
     // タップ判定
     tapJudgeTimeout.current = setTimeout(() => {
@@ -117,26 +150,42 @@ const Map: React.FC = () => {
   };
 
   return (
-    <div
-      style={{ position: "relative", width: "100%", touchAction: "manipulation"}}
-      onPointerDown={handlePointerDown}
-      onPointerMove={handlePointerMove}
-      onPointerUp={handlePointerUp}
-    >
-      <img
-        src="/maps/blkfox.png"
-        alt="Map"
-        style={{ 
-          width: "100%", 
-          height: "100%", 
-          objectFit: "contain", 
-          display: "block", 
-          pointerEvents: "none",
-          userSelect: "none",
-          WebkitUserSelect: "none"
+    <div style={{ position: "relative", width: "100%", touchAction: "manipulation"}}>
+      {/* 回転ボタン群 */}
+      <div style={{ position: "absolute", top: 8, left: 8, zIndex: 50, display: "flex", gap: 6 }}>
+        <button onClick={rotateLeft} aria-label="左回転">⟲</button>
+        <button onClick={resetRotation} aria-label="回転リセット">⟳0°</button>
+        <button onClick={rotateRight} aria-label="右回転">⟳</button>
+      </div>
+
+      {/* 回転をかけるラッパー。transform-origin を中心に指定 */}
+      <div
+        style={{
+          position: "relative",
+          width: "100%",
+          height: "100%",
+          transform: `rotate(${rotation}deg)`,
+          transformOrigin: "center center",
         }}
-      />
-      <PinLayer pins={pins} />
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+      >
+        <img
+          src="/maps/blkfox.png"
+          alt="Map"
+          style={{ 
+            width: "100%", 
+            height: "100%", 
+            objectFit: "contain", 
+            display: "block", 
+            pointerEvents: "none",
+            userSelect: "none",
+            WebkitUserSelect: "none"
+          }}
+        />
+        <PinLayer pins={pins} />
+      </div>
     </div>
   );
 };
