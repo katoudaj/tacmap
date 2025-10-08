@@ -4,6 +4,7 @@ import { PIN_MAX_DURATION } from "../config"; // 最大表示秒数（例: 20秒
 
 interface PinLayerProps {
   pins: PinData[];
+  rotation?: number;
 }
 
 const colorMap: Record<PinType, string> = {
@@ -12,7 +13,7 @@ const colorMap: Record<PinType, string> = {
   general: "orange"
 };
 
-const PinLayer: React.FC<PinLayerProps> = ({ pins }) => {
+const PinLayer: React.FC<PinLayerProps> = ({ pins, rotation = 0 }) => {
   return (
     <>
       {pins.map((pin) => {
@@ -38,7 +39,15 @@ const PinLayer: React.FC<PinLayerProps> = ({ pins }) => {
               userSelect: "none"
             }}
           >
-            {elapsedSeconds}
+            <span
+              style={{
+                display: "inline-block",
+                transform: `rotate(${-rotation}deg)`,
+                transformOrigin: "center center"
+              }}
+            >
+              {elapsedSeconds}
+            </span>
           </div>
         );
       })}

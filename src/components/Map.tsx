@@ -184,7 +184,7 @@ const Map: React.FC = () => {
             WebkitUserSelect: "none"
           }}
         />
-        <PinLayer pins={pins} />
+        <PinLayer pins={pins} rotation={rotation} />
       </div>
     </div>
   );
