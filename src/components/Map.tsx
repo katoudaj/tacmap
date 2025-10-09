@@ -10,7 +10,11 @@ const MOVE_THRESHOLD = 5; // px
 const Map: React.FC = () => {
   const [pins, setPins] = useState<PinData[]>([]);
   const [rotation, setRotation] = useState<number>(0); // 回転角度 (deg)
+  const [scale, setScale] = useState<number>(1); // 追加: 自動縮小スケール
   const clickTimeout = useRef<NodeJS.Timeout | null>(null);
+
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const imgRef = useRef<HTMLImageElement | null>(null);
 
   const tapJudgeTimeout = useRef<NodeJS.Timeout | null>(null);
   const isJudging = useRef(false);
@@ -149,8 +153,45 @@ const Map: React.FC = () => {
     await pinManager.addPin(xRatio, yRatio, pinType);
   };
 
+  useEffect(() => {
+    // 親コンテナと画像サイズ、rotation が変わったら scale を再計算する
+    const computeScale = () => {
+      const container = containerRef.current;
+      const img = imgRef.current;
+      if (!container || !img) return;
+
+      // 表示されている画像のレイアウトサイズ（既にCSSで max に合わせている前提）
+      const w = img.clientWidth;
+      const h = img.clientHeight;
+
+      const rad = (rotation * Math.PI) / 180;
+      const cos = Math.abs(Math.cos(rad));
+      const sin = Math.abs(Math.sin(rad));
+
+      // 回転後の外接矩形（幅・高さ）
+      const rotatedW = cos * w + sin * h;
+      const rotatedH = sin * w + cos * h;
+
+      const cw = container.clientWidth;
+      const ch = container.clientHeight;
+
+      const s = Math.min(1, cw / rotatedW, ch / rotatedH);
+      setScale(s);
+    };
+
+    computeScale();
+    const ro = new ResizeObserver(computeScale);
+    if (containerRef.current) ro.observe(containerRef.current);
+    if (imgRef.current) ro.observe(imgRef.current);
+    window.addEventListener("orientationchange", computeScale);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener("orientationchange", computeScale);
+    };
+  }, [rotation]);
+
   return (
-    <div style={{ position: "relative", width: "100%", touchAction: "manipulation"}}>
+    <div ref={containerRef} style={{ position: "relative", width: "100%", height: "100vh", touchAction: "manipulation", overflow: "hidden"}}>
       {/* 回転ボタン群 */}
       <div style={{ position: "absolute", top: 8, left: 8, zIndex: 50, display: "flex", gap: 6 }}>
         <button onClick={rotateLeft} aria-label="左回転">⟲</button>
@@ -158,27 +199,34 @@ const Map: React.FC = () => {
         <button onClick={rotateRight} aria-label="右回転">⟳</button>
       </div>
 
-      {/* 回転をかけるラッパー。transform-origin を中心に指定 */}
+      {/* 回転＋縮小をかけるラッパー。中心で回転・拡縮 */}
       <div
-        style={{
-          position: "relative",
-          width: "100%",
-          height: "100%",
-          transform: `rotate(${rotation}deg)`,
-          transformOrigin: "center center",
-        }}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
+        style={{
+          position: "absolute",
+          left: "50%",
+          top: "50%",
+          transform: `translate(-50%,-50%) rotate(${rotation}deg) scale(${scale})`,
+          transformOrigin: "center center",
+          // 最大サイズの枠に合わせて中央に置くために inline-block 幅自動
+          display: "inline-block",
+          zIndex: 1,
+          pointerEvents: "auto"
+        }}
       >
         <img
+          ref={imgRef}
           src="/maps/blkfox.png"
           alt="Map"
           style={{ 
-            width: "100%", 
-            height: "100%", 
-            objectFit: "contain", 
+            width: "auto",
+            height: "auto",
+            maxWidth: "100vw",
+            maxHeight: "100vh",
             display: "block", 
+            objectFit: "contain", 
             pointerEvents: "none",
             userSelect: "none",
             WebkitUserSelect: "none"
