@@ -82,4 +82,13 @@ export class PinManager {
     };
     await setDoc(doc(db, "pins", pin.id), pin);
   }
+
+  async remove(id: string) {
+    try {
+      await deleteDoc(doc(db, "pins", id));
+    } catch (err) {
+      console.error("Failed to remove pin:", err);
+    }
+  }
+  
 }

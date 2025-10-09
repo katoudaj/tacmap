@@ -1,10 +1,12 @@
-import React from "react";
+import React, { useRef } from "react";
 import { PinData, PinType } from "../models/Pin";
 import { PIN_MAX_DURATION } from "../config"; 
 
 interface PinLayerProps {
   pins: PinData[];
   rotation?: number;
+  onRemovePin?: (id: string) => void; // 追加: 削除コールバック
+  longPressMs?: number;
 }
 
 const colorMap: Record<PinType, string> = {
@@ -14,8 +16,36 @@ const colorMap: Record<PinType, string> = {
 };
 
 const DEFAULT_PIN_SIZE = 24; // （px）
+const DEFAULT_LONG_PRESS_MS = 600;
 
-const PinLayer: React.FC<PinLayerProps> = ({ pins, rotation = 0 }) => {
+const PinLayer: React.FC<PinLayerProps> = ({ pins, rotation = 0, onRemovePin, longPressMs = DEFAULT_LONG_PRESS_MS }) => {
+  const timersRef = useRef<Record<string, number | null>>({});
+
+  const startLongPress = (id: string) => (e: React.PointerEvent) => {
+    if (!onRemovePin) return;
+    e.preventDefault();
+    e.stopPropagation(); // 親へバブリングさせない
+    const prev = timersRef.current[id];
+    if (prev) {
+      window.clearTimeout(prev);
+    }
+    timersRef.current[id] = window.setTimeout(() => {
+      onRemovePin(id);
+      timersRef.current[id] = null;
+    }, longPressMs);
+  };
+
+  const cancelLongPress = (id: string) => (e?: React.PointerEvent) => {
+    if (e) {
+      e.stopPropagation(); // 親へ伝わるのを防ぐ
+    }
+    const t = timersRef.current[id];
+    if (t) {
+      window.clearTimeout(t);
+      timersRef.current[id] = null;
+    }
+  };
+
   return (
     <>
       {pins.map((pin) => {
@@ -32,6 +62,9 @@ const PinLayer: React.FC<PinLayerProps> = ({ pins, rotation = 0 }) => {
         return (
           <div
             key={pin.id}
+            onPointerDown={startLongPress(pin.id)}
+            onPointerUp={cancelLongPress(pin.id)}
+            onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); }}
             style={{
               position: "absolute",
               left: `${pin.xRatio * 100}%`,
@@ -46,8 +79,8 @@ const PinLayer: React.FC<PinLayerProps> = ({ pins, rotation = 0 }) => {
               fontWeight: "bold",
               fontSize: `${fontSize}px`,
               opacity: opacity,
-              pointerEvents: "none",
-              userSelect: "none"
+              userSelect: "none",
+              cursor: onRemovePin ? "pointer" : "default"
             }}
           >
             <span

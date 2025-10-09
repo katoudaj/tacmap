@@ -232,7 +232,11 @@ const Map: React.FC = () => {
             WebkitUserSelect: "none"
           }}
         />
-        <PinLayer pins={pins} rotation={rotation} />
+        <PinLayer
+          pins={pins}
+          rotation={rotation}
+          onRemovePin={(id) => pinManager.remove(id)}
+        />
       </div>
     </div>
   );
