@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from "react";
 import RotationController from "./RotationController";
 import Legend from "./Legend";
-import useAutoScale from "../hooks/useAutoScale";
 import PinLayer from "./PinLayer";
+import useAutoScale from "../hooks/useAutoScale";
+import usePreventDoubleTapZoom from "../hooks/usePreventDoubleTapZoom";
 import { PinManager, PinType, PinData } from "../models/Pin";
 import PointerMapper from "../utils";
 import TapJudge, { TapType } from "../TapJudge";
@@ -15,6 +16,7 @@ const Map: React.FC = () => {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const imgRef = useRef<HTMLImageElement | null>(null);
   const scale = useAutoScale(containerRef, imgRef, rotation);
+  usePreventDoubleTapZoom();
   const rotationRef = useRef(rotation);
   useEffect(() => { rotationRef.current = rotation; }, [rotation]);
   const tapJudgeRef = useRef<TapJudge | null>(null);
@@ -40,21 +42,6 @@ const Map: React.FC = () => {
   useEffect(() => {
     pinManager.subscribe(setPins);
     return () => pinManager.unsubscribeAll();
-  }, []);
-
-  // iOSのダブルタップズーム防止
-  useEffect(() => {
-    let lastTouch = 0;
-
-    const preventDoubleTapZoom = (e: TouchEvent) => {
-      if (e.touches.length > 1) return;
-      const now = Date.now();
-      if (now - lastTouch < 400) e.preventDefault();
-      lastTouch = now;
-    };
-
-    document.addEventListener("touchstart", preventDoubleTapZoom, { passive: false });
-    return () => document.removeEventListener("touchstart", preventDoubleTapZoom);
   }, []);
 
   const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
