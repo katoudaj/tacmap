@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import RotationController from "./RotationController";
+import Legend from "./Legend";
 import useAutoScale from "../hooks/useAutoScale";
 import PinLayer from "./PinLayer";
 import { PinManager, PinType, PinData } from "../models/Pin";
@@ -83,34 +84,20 @@ const Map: React.FC = () => {
         overflow: "hidden",
       }}
     >
-      {/* 回転コントローラ */}
       <RotationController onChange={setRotation} />
-
-      {/* ピンの凡例 */}
-      <div style={{
-        position: "absolute",
-        top: 6,
-        right: 6,
-        zIndex: 50,
-        padding: "6px 8px",
-        fontSize: 10,
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "flex-start",
-      }}>
-        <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
-          <span style={{ width: 10, height: 10, borderRadius: 5, background: "blue",  }} />
-          <span>味方: タップ</span>
-        </div>
-        <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
-          <span style={{ width: 10, height: 10, borderRadius: 5, background: "red", }} />
-          <span>敵: ダブルタップ</span>
-        </div>
-        <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
-          <span style={{ width: 10, height: 10, borderRadius: 5, background: "orange", }} />
-          <span>汎用: 長押し</span>
-        </div>
-      </div>
+      <Legend
+        items={[
+          { color: "blue", label: "味方: タップ" },
+          { color: "red", label: "敵: ダブルタップ" },
+          { color: "orange", label: "汎用: 長押し" },
+        ]}
+        style={{
+          position: "absolute",
+          top: 8,
+          right: 8, 
+          zIndex: 50,
+        }}
+      />
 
       {/* 回転＋縮小をかけるラッパー。中心で回転・拡縮 */}
       <div
