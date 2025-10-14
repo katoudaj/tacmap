@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef } from "react";
+import RotationController from "./RotationController";
+import useAutoScale from "../hooks/useAutoScale";
 import PinLayer from "./PinLayer";
 import { PinManager, PinType, PinData } from "../models/Pin";
 import PointerMapper from "../utils";
 import TapJudge, { TapType } from "../TapJudge";
-import useAutoScale from "../hooks/useAutoScale";
 
 const pinManager = new PinManager();
 
@@ -34,42 +35,26 @@ const Map: React.FC = () => {
     };
   }, []);
 
+  // ピンマネージャ購読
   useEffect(() => {
     pinManager.subscribe(setPins);
     return () => pinManager.unsubscribeAll();
   }, []);
 
+  // iOSのダブルタップズーム防止
   useEffect(() => {
     let lastTouch = 0;
 
     const preventDoubleTapZoom = (e: TouchEvent) => {
-      // 2本指のピンチは無視
       if (e.touches.length > 1) return;
-
       const now = Date.now();
-      if (now - lastTouch < 400) {
-        e.preventDefault(); // ダブルタップズームだけ防ぐ
-      }
+      if (now - lastTouch < 400) e.preventDefault();
       lastTouch = now;
     };
 
-    // touchstart にイベント登録、passive: false 必須
     document.addEventListener("touchstart", preventDoubleTapZoom, { passive: false });
-
-    return () => {
-      document.removeEventListener("touchstart", preventDoubleTapZoom);
-    };
+    return () => document.removeEventListener("touchstart", preventDoubleTapZoom);
   }, []);
-
-  const rotateBy = (deg: number) => {
-    setRotation((r) => {
-      const next = (r + deg) % 360;
-      return next < 0 ? next + 360 : next;
-    });
-  };
-  const rotateLeft = () => rotateBy(-90);
-  const rotateRight = () => rotateBy(90);
-  const resetRotation = () => setRotation(0);
 
   const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     tapJudgeRef.current?.pointerDown(e);
@@ -88,13 +73,18 @@ const Map: React.FC = () => {
   };
 
   return (
-    <div ref={containerRef} style={{ position: "relative", width: "100%", height: "100vh", touchAction: "manipulation", overflow: "hidden"}}>
-      {/* 回転ボタン群 */}
-      <div style={{ position: "absolute", top: 8, left: 8, zIndex: 50, display: "flex", gap: 6 }}>
-        <button onClick={rotateLeft} aria-label="左回転">⟲</button>
-        <button onClick={resetRotation} aria-label="回転リセット">⟳0°</button>
-        <button onClick={rotateRight} aria-label="右回転">⟳</button>
-      </div>
+    <div
+      ref={containerRef}
+      style={{
+        position: "relative",
+        width: "100%",
+        height: "100vh",
+        touchAction: "manipulation",
+        overflow: "hidden",
+      }}
+    >
+      {/* 回転コントローラ */}
+      <RotationController onChange={setRotation} />
 
       {/* ピンの凡例 */}
       <div style={{
@@ -133,7 +123,6 @@ const Map: React.FC = () => {
           top: "50%",
           transform: `translate(-50%,-50%) rotate(${rotation}deg) scale(${scale})`,
           transformOrigin: "center center",
-          // 最大サイズの枠に合わせて中央に置くために inline-block 幅自動
           display: "inline-block",
           zIndex: 1,
           pointerEvents: "auto"
