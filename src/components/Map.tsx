@@ -60,11 +60,9 @@ const Map: React.FC = () => {
   const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     tapJudgeRef.current?.pointerDown(e);
   };
-
   const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
     tapJudgeRef.current?.pointerMove(e);
   };
-
   const handlePointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
     tapJudgeRef.current?.pointerUp(e);
   };
@@ -84,7 +82,16 @@ const Map: React.FC = () => {
         overflow: "hidden",
       }}
     >
-      <RotationController onChange={setRotation} />
+      <RotationController 
+        onChange={setRotation} 
+        style={{
+          position: "absolute",
+          top: 8,
+          left: 8,
+          zIndex: 50,
+        }} 
+      />
+
       <Legend
         items={[
           { color: "blue", label: "味方: タップ" },

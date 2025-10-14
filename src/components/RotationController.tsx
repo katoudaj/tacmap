@@ -2,9 +2,10 @@ import React, { useState, useRef, useEffect } from "react";
 
 interface RotationControllerProps {
   onChange: (rotation: number) => void; // Map側に回転角度を通知
+  style?: React.CSSProperties;
 }
 
-const RotationController: React.FC<RotationControllerProps> = ({ onChange }) => {
+const RotationController: React.FC<RotationControllerProps> = ({ onChange, style }) => {
   const [rotation, setRotation] = useState(0);
   const rotationRef = useRef(rotation);
 
@@ -25,7 +26,11 @@ const RotationController: React.FC<RotationControllerProps> = ({ onChange }) => 
   const resetRotation = () => setRotation(0);
 
   return (
-    <div style={{ position: "absolute", top: 8, left: 8, zIndex: 50, display: "flex", gap: 6 }}>
+    <div style={{ 
+        display: "flex", 
+        gap: 6,
+        ...style
+      }}>
       <button onClick={rotateLeft}>⟲</button>
       <button onClick={resetRotation}>⟳0°</button>
       <button onClick={rotateRight}>⟳</button>
