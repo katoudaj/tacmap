@@ -3,20 +3,19 @@ import PinLayer from "./PinLayer";
 import { PinManager, PinType, PinData } from "../models/Pin";
 import PointerMapper from "../utils";
 import TapJudge, { TapType } from "../TapJudge";
+import useAutoScale from "../hooks/useAutoScale";
 
 const pinManager = new PinManager();
 
 const Map: React.FC = () => {
   const [pins, setPins] = useState<PinData[]>([]);
   const [rotation, setRotation] = useState<number>(0); // 回転角度 (deg)
-  const [scale, setScale] = useState<number>(1); // 自動縮小スケール
-  
   const containerRef = useRef<HTMLDivElement | null>(null);
   const imgRef = useRef<HTMLImageElement | null>(null);
-
-  const tapJudgeRef = useRef<TapJudge | null>(null);
+  const scale = useAutoScale(containerRef, imgRef, rotation);
   const rotationRef = useRef(rotation);
   useEffect(() => { rotationRef.current = rotation; }, [rotation]);
+  const tapJudgeRef = useRef<TapJudge | null>(null);
 
   // TapJudge の初期化（コンポーネントライフタイムに紐づける）
   useEffect(() => {
@@ -87,43 +86,6 @@ const Map: React.FC = () => {
   const addPin = async (xRatio: number, yRatio: number, pinType: PinType) => {
     await pinManager.addPin(xRatio, yRatio, pinType);
   };
-
-  useEffect(() => {
-    // 親コンテナと画像サイズ、rotation が変わったら scale を再計算する
-    const computeScale = () => {
-      const container = containerRef.current;
-      const img = imgRef.current;
-      if (!container || !img) return;
-
-      // 表示されている画像のレイアウトサイズ（既にCSSで max に合わせている前提）
-      const w = img.clientWidth;
-      const h = img.clientHeight;
-
-      const rad = (rotation * Math.PI) / 180;
-      const cos = Math.abs(Math.cos(rad));
-      const sin = Math.abs(Math.sin(rad));
-
-      // 回転後の外接矩形（幅・高さ）
-      const rotatedW = cos * w + sin * h;
-      const rotatedH = sin * w + cos * h;
-
-      const cw = container.clientWidth;
-      const ch = container.clientHeight;
-
-      const s = Math.min(1, cw / rotatedW, ch / rotatedH);
-      setScale(s);
-    };
-
-    computeScale();
-    const ro = new ResizeObserver(computeScale);
-    if (containerRef.current) ro.observe(containerRef.current);
-    if (imgRef.current) ro.observe(imgRef.current);
-    window.addEventListener("orientationchange", computeScale);
-    return () => {
-      ro.disconnect();
-      window.removeEventListener("orientationchange", computeScale);
-    };
-  }, [rotation]);
 
   return (
     <div ref={containerRef} style={{ position: "relative", width: "100%", height: "100vh", touchAction: "manipulation", overflow: "hidden"}}>
