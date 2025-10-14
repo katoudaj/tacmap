@@ -2,34 +2,38 @@ import React, { useState, useEffect, useRef } from "react";
 import PinLayer from "./PinLayer";
 import { PinManager, PinType, PinData } from "../models/Pin";
 import PointerMapper from "../utils";
+import TapJudge, { TapType } from "../TapJudge";
 
 const pinManager = new PinManager();
-
-const TAP_THRESHOLD = 250; // ms
-const MOVE_THRESHOLD = 5; // px
 
 const Map: React.FC = () => {
   const [pins, setPins] = useState<PinData[]>([]);
   const [rotation, setRotation] = useState<number>(0); // 回転角度 (deg)
-  const [scale, setScale] = useState<number>(1); // 追加: 自動縮小スケール
-  const clickTimeout = useRef<NodeJS.Timeout | null>(null);
-
+  const [scale, setScale] = useState<number>(1); // 自動縮小スケール
+  
   const containerRef = useRef<HTMLDivElement | null>(null);
   const imgRef = useRef<HTMLImageElement | null>(null);
 
-  const tapJudgeTimeout = useRef<NodeJS.Timeout | null>(null);
-  const isJudging = useRef(false);
+  const tapJudgeRef = useRef<TapJudge | null>(null);
+  const rotationRef = useRef(rotation);
+  useEffect(() => { rotationRef.current = rotation; }, [rotation]);
 
-  // ドラッグ判定用
-  const startX = useRef(0);
-  const startY = useRef(0);
-  const moved = useRef(false);
-
-  // ダブルタップ判定用
-  const doubleTapped = useRef(false);
-
-  // 長押し判定用
-  const maybeLongPress = useRef(false);
+  // TapJudge の初期化（コンポーネントライフタイムに紐づける）
+  useEffect(() => {
+    tapJudgeRef.current = new TapJudge(
+      (e) => PointerMapper.clientToRatio(e.currentTarget as HTMLElement, e.clientX, e.clientY, rotationRef.current),
+      (type: TapType, xRatio: number, yRatio: number) => {
+        // Tap 判定結果が返ってくる場所
+        if (type === "double") addPin(xRatio, yRatio, PinType.Enemy);
+        else if (type === "long") addPin(xRatio, yRatio, PinType.General);
+        else addPin(xRatio, yRatio, PinType.Ally);
+      }
+    );
+    return () => {
+      tapJudgeRef.current?.dispose();
+      tapJudgeRef.current = null;
+    };
+  }, []);
 
   useEffect(() => {
     pinManager.subscribe(setPins);
@@ -69,74 +73,18 @@ const Map: React.FC = () => {
   const resetRotation = () => setRotation(0);
 
   const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (isJudging.current) {
-      doubleTapped.current = true;
-      return;
-    }
-    isJudging.current = true;
-
-    maybeLongPress.current = true;
-
-    // スタート座標セット（ドラッグ判定用）
-    startX.current = e.clientX;
-    startY.current = e.clientY;
-    moved.current = false;
-
-    // タップ位置を正規化して取得
-    const { xRatio, yRatio } = PointerMapper.clientToRatio(
-      e.currentTarget as HTMLElement,
-      e.clientX,
-      e.clientY,
-      rotation
-    );
-
-    // タップ判定
-    tapJudgeTimeout.current = setTimeout(() => {
-      // 動いていた場合は無視
-      if (moved.current) {
-        // 動いていた場合は無視
-      } 
-      else if (doubleTapped.current) {
-        // ダブルタップ確定
-        addPin(xRatio, yRatio, PinType.Enemy);
-      }
-      else if (maybeLongPress.current) {
-        // 長押し確定
-        addPin(xRatio, yRatio, PinType.General);
-      }
-      else {
-        // シングルタップ確定
-        addPin(xRatio, yRatio, PinType.Ally);
-      }
-
-      // リセット
-      isJudging.current = false;
-      doubleTapped.current = false;
-      maybeLongPress.current = false;
-      tapJudgeTimeout.current = null;
-      moved.current = false;
-    }, TAP_THRESHOLD);
+    tapJudgeRef.current?.pointerDown(e);
   };
 
   const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (!isJudging.current) return;
-
-    const dx = e.clientX - startX.current;
-    const dy = e.clientY - startY.current;
-    if (Math.sqrt(dx * dx + dy * dy) > MOVE_THRESHOLD) {
-      moved.current = true;
-    }
+    tapJudgeRef.current?.pointerMove(e);
   };
 
   const handlePointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
-    maybeLongPress.current = false;
+    tapJudgeRef.current?.pointerUp(e);
   };
 
   const addPin = async (xRatio: number, yRatio: number, pinType: PinType) => {
-    if (clickTimeout.current) {
-      clearTimeout(clickTimeout.current);
-      clickTimeout.current = null;
-    }
     await pinManager.addPin(xRatio, yRatio, pinType);
   };
 
