@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import PinLayer from "./PinLayer";
 import { PinManager, PinType, PinData } from "../models/Pin";
+import PointerMapper from "../utils";
 
 const pinManager = new PinManager();
 
@@ -81,27 +82,13 @@ const Map: React.FC = () => {
     startY.current = e.clientY;
     moved.current = false;
 
-    const rect = e.currentTarget.getBoundingClientRect();
-
-    // 回転を考慮して、クリック点を逆回転してから比率計算する
-    const cx = rect.left + rect.width / 2;
-    const cy = rect.top + rect.height / 2;
-    const localX = e.clientX - cx;
-    const localY = e.clientY - cy;
-
-    const rad = (rotation * Math.PI) / 180;
-    const cos = Math.cos(rad);
-    const sin = Math.sin(rad);
-
-    // 逆回転（-rotation）を適用した座標
-    const rx = localX * cos + localY * sin;
-    const ry = -localX * sin + localY * cos;
-
-    // 正規化は回転前の要素サイズ（layout サイズ）を使う
-    const w = (e.currentTarget as HTMLElement).clientWidth;
-    const h = (e.currentTarget as HTMLElement).clientHeight;
-    const xRatio = 0.5 + rx / w;
-    const yRatio = 0.5 + ry / h;
+    // タップ位置を正規化して取得
+    const { xRatio, yRatio } = PointerMapper.clientToRatio(
+      e.currentTarget as HTMLElement,
+      e.clientX,
+      e.clientY,
+      rotation
+    );
 
     // タップ判定
     tapJudgeTimeout.current = setTimeout(() => {
