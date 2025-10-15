@@ -10,6 +10,7 @@ export enum PinType {
 
 export interface PinData {
   id: string;
+  mapId: string;
   xRatio: number;
   yRatio: number;
   tag: PinType;
@@ -40,19 +41,19 @@ export class PinManager {
     }
   }
 
-  subscribe(callback: (pins: PinData[]) => void) {
+  subscribe(callback: (pins: PinData[]) => void, mapId: string) {
     const q = query(collection(db, "pins"), orderBy("createdAt"));
     this.unsubscribe = onSnapshot(q, async (snapshot) => {
-      this.pins = snapshot.docs.map(doc => doc.data() as PinData);
+      this.pins = snapshot.docs
+        .map((doc) => doc.data() as PinData)
+        .filter((pin) => pin.mapId === mapId); 
 
-      // 取得時に古いピンを削除
       await this.removeExpiredPins();
 
       // コールバックは常に最新の pins
       callback(this.pins.filter(pin => Date.now() - pin.createdAt < PIN_MAX_DURATION * 1000));
     });
 
-    // 毎秒チェックして削除
     this.cleanupInterval = setInterval(async () => {
       await this.removeExpiredPins();
       callback(this.pins.filter(pin => Date.now() - pin.createdAt < PIN_MAX_DURATION * 1000));
@@ -72,15 +73,20 @@ export class PinManager {
     }
   }
 
-  async addPin(xRatio: number, yRatio: number, type: PinType) {
+  async addPin(xRatio: number, yRatio: number, type: PinType, mapId: string) {
     const pin: PinData = {
         id: Date.now().toString(),
+        mapId,
         xRatio,
         yRatio,
         tag: type,
         createdAt: Date.now()
     };
-    await setDoc(doc(db, "pins", pin.id), pin);
+    try {
+      await setDoc(doc(db, "pins", pin.id), pin);
+    } catch (err) {
+      console.error("Failed to add pin:", err);
+    }
   }
 
   async remove(id: string) {
@@ -90,5 +96,4 @@ export class PinManager {
       console.error("Failed to remove pin:", err);
     }
   }
-  
 }

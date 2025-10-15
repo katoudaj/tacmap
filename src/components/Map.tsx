@@ -8,9 +8,13 @@ import { PinManager, PinType, PinData } from "../models/Pin";
 import PointerMapper from "../utils";
 import TapJudge, { TapType } from "../TapJudge";
 
+interface MapProps {
+  mapSrc: string;
+}
+
 const pinManager = new PinManager();
 
-const Map: React.FC = () => {
+const Map: React.FC<MapProps> = ({ mapSrc }) => {
   const [pins, setPins] = useState<PinData[]>([]);
   const [rotation, setRotation] = useState<number>(0); // 回転角度 (deg)
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -36,13 +40,13 @@ const Map: React.FC = () => {
       tapJudgeRef.current?.dispose();
       tapJudgeRef.current = null;
     };
-  }, []);
+  }, [mapSrc]);
 
   // ピンマネージャ購読
   useEffect(() => {
-    pinManager.subscribe(setPins);
+    pinManager.subscribe(setPins, mapSrc); // mapSrcをmapIdとして使用
     return () => pinManager.unsubscribeAll();
-  }, []);
+  }, [mapSrc]);
 
   const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     tapJudgeRef.current?.pointerDown(e);
@@ -55,7 +59,7 @@ const Map: React.FC = () => {
   };
 
   const addPin = async (xRatio: number, yRatio: number, pinType: PinType) => {
-    await pinManager.addPin(xRatio, yRatio, pinType);
+    await pinManager.addPin(xRatio, yRatio, pinType, mapSrc); // mapSrcをmapIdとして使用
   };
 
   return (
@@ -73,7 +77,7 @@ const Map: React.FC = () => {
         onChange={setRotation} 
         style={{
           position: "absolute",
-          top: 8,
+          top: 24,
           left: 8,
           zIndex: 50,
         }} 
@@ -111,7 +115,7 @@ const Map: React.FC = () => {
       >
         <img
           ref={imgRef}
-          src="/maps/blkfox.png"
+          src={mapSrc}
           alt="Map"
           style={{ 
             width: "auto",
