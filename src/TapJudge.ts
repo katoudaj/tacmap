@@ -1,5 +1,7 @@
 export type TapType = "single" | "double" | "long";
 
+type OperationType = "pointerDown" | "pointerMove" | "pointerUp";
+
 type GetRatioFn = (e: any) => { xRatio: number; yRatio: number };
 type OnTapFn = (type: TapType, xRatio: number, yRatio: number) => void;
 
@@ -7,57 +9,77 @@ export default class TapJudge {
   private getRatio: GetRatioFn;
   private onTap: OnTapFn;
   private tapTimeout: ReturnType<typeof setTimeout> | null = null;
-  private isJudging = false;
-  private doubleTapped = false;
-  private maybeLongPress = false;
-  private moved = false;
   private startX = 0;
   private startY = 0;
+
+  // Operation履歴
+  private operations: OperationType[] = [];
 
   constructor(getRatio: GetRatioFn, onTap: OnTapFn, private opts = { tapMs: 250, movePx: 5 }) {
     this.getRatio = getRatio;
     this.onTap = onTap;
   }
 
-  pointerDown(e: any) {
-    if (this.isJudging) {
-      this.doubleTapped = true;
+  private judgeTap(e: any): TapType | void {
+    if (this.operations.find(op => op === "pointerMove")) {
       return;
     }
-    this.isJudging = true;
-    this.maybeLongPress = true;
-    this.moved = false;
-    this.startX = e.clientX;
-    this.startY = e.clientY;
 
-    const { xRatio, yRatio } = this.getRatio(e);
-
-    this.tapTimeout = setTimeout(() => {
-      if (this.moved) {
-        // ignore
-      } else if (this.doubleTapped) {
-        this.onTap("double", xRatio, yRatio);
-      } else if (this.maybeLongPress) {
-        this.onTap("long", xRatio, yRatio);
-      } else {
-        this.onTap("single", xRatio, yRatio);
+    // ズーム操作の誤判定防止のために、2連続以上のpointerDownはズーム操作とみなして無効
+    for (let i = 0; i < this.operations.length; i++) {
+      if (this.operations[i] === "pointerDown") {
+        if (i > 0 && this.operations[i - 1] === "pointerDown") { 
+          return;
+        } 
       }
+    }
 
+    // ロングタップ判定
+    if (!this.operations.find(op => op === "pointerUp")) {
+      return "long";
+    }
+
+    // ダブルタップ判定
+    const pointerDowns = this.operations.filter(op => op === "pointerDown");
+    if (pointerDowns.length >= 2) {
+      return "double";
+    }
+
+    // シングルタップ
+    return "single";
+  }
+
+  pointerDown(e: any) {
+    if (!this.tapTimeout) {
       this.resetState();
-    }, this.opts.tapMs);
+      this.startX = e.clientX;
+      this.startY = e.clientY;
+      const { xRatio, yRatio } = this.getRatio(e);
+      
+      this.tapTimeout = setTimeout(() => {
+        const tapType = this.judgeTap(e);
+        if (tapType === "single") this.onTap("single", xRatio, yRatio);
+        else if (tapType === "double") this.onTap("double", xRatio, yRatio);
+        else if (tapType === "long") this.onTap("long", xRatio, yRatio);
+
+        this.resetState();
+      }, 
+      this.opts.tapMs);
+    }
+
+    this.operations.push("pointerDown");
   }
 
   pointerMove(e: any) {
-    if (!this.isJudging) return;
     const dx = e.clientX - this.startX;
     const dy = e.clientY - this.startY;
     if (Math.sqrt(dx * dx + dy * dy) > this.opts.movePx) {
-      this.moved = true;
+      this.operations.push("pointerMove");
     }
   }
 
   pointerUp(_e: any) {
-    this.maybeLongPress = false;
+    this.operations.push("pointerUp");
   }
 
   dispose() {
@@ -69,13 +91,11 @@ export default class TapJudge {
   }
 
   private resetState() {
-    this.isJudging = false;
-    this.doubleTapped = false;
-    this.maybeLongPress = false;
-    this.moved = false;
     if (this.tapTimeout) {
       clearTimeout(this.tapTimeout);
       this.tapTimeout = null;
     }
+
+    this.operations = [];
   }
 }
