@@ -120,8 +120,6 @@ const Map: React.FC<MapProps> = ({ mapSrc }) => {
           style={{ 
             width: "auto",
             height: "auto",
-            maxWidth: "100vw",
-            maxHeight: "100vh",
             display: "block", 
             objectFit: "contain", 
             pointerEvents: "none",

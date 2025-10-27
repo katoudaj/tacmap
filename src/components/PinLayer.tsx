@@ -15,7 +15,7 @@ const colorMap: Record<PinType, string> = {
   general: "orange"
 };
 
-const DEFAULT_PIN_SIZE = 24; // （px）
+const DEFAULT_PIN_SIZE = 80; // （px）
 const DEFAULT_LONG_PRESS_MS = 600;
 
 const PinLayer: React.FC<PinLayerProps> = ({ pins, rotation = 0, onRemovePin, longPressMs = DEFAULT_LONG_PRESS_MS }) => {
