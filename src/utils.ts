@@ -1,13 +1,13 @@
 export default class PointerMapper {
   // client座標（ページ座標）と要素、回転角度を渡すと正規化された比率を返す
-  static clientToRatio(el: HTMLElement, clientX: number, clientY: number, rotationDeg: number) {
+  static clientToRatio(el: HTMLElement, clientX: number, clientY: number, rotationDeg: number, scale: number) {
     const rect = el.getBoundingClientRect();
 
     // 要素中心を基準にローカル座標
     const cx = rect.left + rect.width / 2;
     const cy = rect.top + rect.height / 2;
-    const localX = clientX - cx;
-    const localY = clientY - cy;
+    const localX = (clientX - cx) / scale;
+    const localY = (clientY - cy) / scale;
 
     // 回転を逆適用（-rotation）
     const rad = (rotationDeg * Math.PI) / 180;

@@ -28,7 +28,7 @@ const Map: React.FC<MapProps> = ({ mapSrc }) => {
   // TapJudge の初期化（コンポーネントライフタイムに紐づける）
   useEffect(() => {
     tapJudgeRef.current = new TapJudge(
-      (e) => PointerMapper.clientToRatio(e.currentTarget as HTMLElement, e.clientX, e.clientY, rotationRef.current),
+      (e) => PointerMapper.clientToRatio(e.currentTarget as HTMLElement, e.clientX, e.clientY, rotationRef.current, scale),
       (type: TapType, xRatio: number, yRatio: number) => {
         // Tap 判定結果が返ってくる場所
         if (type === "double") addPin(xRatio, yRatio, PinType.Enemy);
@@ -40,7 +40,7 @@ const Map: React.FC<MapProps> = ({ mapSrc }) => {
       tapJudgeRef.current?.dispose();
       tapJudgeRef.current = null;
     };
-  }, [mapSrc]);
+  }, [mapSrc, scale]);
 
   // ピンマネージャ購読
   useEffect(() => {
